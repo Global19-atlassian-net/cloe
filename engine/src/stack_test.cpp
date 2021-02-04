@@ -269,11 +269,13 @@ TEST(cloe_stack, deserialization_of_component) {
     ComponentConf cc = ComponentConf("dummy_sensor", cf);
     // Create a sensor component from the given configuration.
     cc.from_conf(Conf{input});
-    std::map<std::string, std::shared_ptr<cloe::Component>> vehicle_sensors = {
+    std::map<std::string, std::shared_ptr<cloe::Component>> mock_veh_sensors = {
         {"cloe::default_world_sensor", std::shared_ptr<ObjectSensor>{nullptr}}};
-    std::map<std::string, std::shared_ptr<cloe::Component>> from;
+    std::map<std::string, std::vector<std::shared_ptr<cloe::Component>>> from;
     for (const auto& kv : cc.from) {
-      from[kv.first] = vehicle_sensors.find(kv.second)->second;
+      for (const auto& comp_name : kv.second) {
+        from[kv.first].push_back(mock_veh_sensors.find(comp_name)->second);
+      }
     }
     auto d = std::dynamic_pointer_cast<DummySensor>(
         std::shared_ptr<cloe::Component>(std::move(cf->make(cc.args, from))));
@@ -306,11 +308,13 @@ TEST(cloe_stack, deserialization_of_component) {
     // Create a sensor component from the given configuration.
     vc.from_conf(Conf{input});
     auto cc = vc.components.find("cloe::default_world_sensor")->second;
-    std::map<std::string, std::shared_ptr<cloe::Component>> vehicle_sensors = {
+    std::map<std::string, std::shared_ptr<cloe::Component>> mock_veh_sensors = {
         {"cloe::default_world_sensor", std::shared_ptr<ObjectSensor>{nullptr}}};
-    std::map<std::string, std::shared_ptr<cloe::Component>> from;
+    std::map<std::string, std::vector<std::shared_ptr<cloe::Component>>> from;
     for (const auto& kv : cc.from) {
-      from[kv.first] = vehicle_sensors.find(kv.second)->second;
+      for (const auto& comp_name : kv.second) {
+        from[kv.first].push_back(mock_veh_sensors.find(comp_name)->second);
+      }
     }
     auto d = std::dynamic_pointer_cast<DummySensor>(
         std::shared_ptr<cloe::Component>(std::move(cf->make(cc.args, from))));
@@ -321,9 +325,8 @@ TEST(cloe_stack, deserialization_of_component) {
 class FusionSensor : public NopObjectSensor {
  public:
   FusionSensor(const std::string& name, const DummySensorConf& conf,
-               std::shared_ptr<ObjectSensor> obs1, std::shared_ptr<ObjectSensor> obs2,
-               std::shared_ptr<EgoSensor> egos)
-      : NopObjectSensor(), config_(conf), obj_src_a_(obs1), obj_src_b_(obs2), ego_sensor_(egos) {}
+               std::vector<std::shared_ptr<ObjectSensor>> obs, std::shared_ptr<EgoSensor> egos)
+      : NopObjectSensor(), config_(conf), obj_sensors_(obs), ego_sensor_(egos) {}
 
   virtual ~FusionSensor() noexcept = default;
 
@@ -331,8 +334,7 @@ class FusionSensor : public NopObjectSensor {
 
  private:
   DummySensorConf config_;
-  std::shared_ptr<ObjectSensor> obj_src_a_;
-  std::shared_ptr<ObjectSensor> obj_src_b_;
+  std::vector<std::shared_ptr<ObjectSensor>> obj_sensors_;
   std::shared_ptr<EgoSensor> ego_sensor_;
 };
 
@@ -341,23 +343,35 @@ DEFINE_COMPONENT_FACTORY(FusionSensorFactory, DummySensorConf, "fusion_object_se
 
 std::unique_ptr<::cloe::Component> FusionSensorFactory::make(
     const ::cloe::Conf& c,
-    const std::map<std::string, std::shared_ptr<cloe::Component>>& comp) const {
+    const std::map<std::string, std::vector<std::shared_ptr<cloe::Component>>>& comp) const {
   decltype(config_) conf{config_};
   if (!c->is_null()) {
     conf.from_conf(c);
   }
-  std::vector<std::string> comp_bindings{"object_sensor_1", "object_sensor_2", "ego_sensor"};
+  // Make sure that the configuration contains the correct keywords.
+  std::vector<std::string> comp_bindings{"object_sensors", "ego_sensors"};
   for (const auto& cb : comp_bindings) {
     if (comp.find(cb) != comp.end()) {
       continue;
     }
     throw Error("FusionSensorFactory: Source component configuration not found: from {}", cb);
   }
-  return std::make_unique<FusionSensor>(
-      this->name(), conf,
-      std::dynamic_pointer_cast<ObjectSensor>(comp.find(comp_bindings.at(0))->second),
-      std::dynamic_pointer_cast<ObjectSensor>(comp.find(comp_bindings.at(1))->second),
-      std::dynamic_pointer_cast<EgoSensor>(comp.find(comp_bindings.at(2))->second));
+
+  // Downcast the components.
+  std::vector<std::shared_ptr<ObjectSensor>> from_obj;
+  for (const auto& sensor : comp.find("object_sensors")->second) {
+    from_obj.push_back(std::dynamic_pointer_cast<ObjectSensor>(sensor));
+  }
+
+  std::shared_ptr<EgoSensor> from_ego = std::shared_ptr<EgoSensor>{nullptr};
+  for (const auto& sensor : comp.find("ego_sensors")->second) {
+    if (from_ego) {
+      throw Error("FusionSensorFactory: Only one EgoSensor source expected.");
+    }
+    from_ego = std::dynamic_pointer_cast<EgoSensor>(sensor);
+  }
+
+  return std::make_unique<FusionSensor>(this->name(), conf, from_obj, from_ego);
 }
 
 TEST(cloe_stack, deserialization_of_fusion_component) {
@@ -365,9 +379,8 @@ TEST(cloe_stack, deserialization_of_fusion_component) {
       "binding": "fusion_sensor",
       "name": "dummy_fusion_sensor",
       "from": {
-        "object_sensor_1": "left_corner_sensor",
-        "object_sensor_2": "right_corner_sensor",
-        "ego_sensor": "cloe::default_ego_sensor"
+        "object_sensors": ["left_corner_sensor", "right_corner_sensor"],
+        "ego_sensors": ["cloe::default_ego_sensor"]
       },
       "args" : {
         "freq" : 11
@@ -379,13 +392,15 @@ TEST(cloe_stack, deserialization_of_fusion_component) {
     ComponentConf cc = ComponentConf("fusion_sensor", cf);
     // Create a sensor component from the given configuration.
     cc.from_conf(Conf{input});
-    std::map<std::string, std::shared_ptr<cloe::Component>> vehicle_sensors = {
+    std::map<std::string, std::shared_ptr<cloe::Component>> mock_veh_sensors = {
         {"left_corner_sensor", std::shared_ptr<ObjectSensor>{nullptr}},
         {"right_corner_sensor", std::shared_ptr<ObjectSensor>{nullptr}},
         {"cloe::default_ego_sensor", std::shared_ptr<EgoSensor>{nullptr}}};
-    std::map<std::string, std::shared_ptr<cloe::Component>> from;
+    std::map<std::string, std::vector<std::shared_ptr<cloe::Component>>> from;
     for (const auto& kv : cc.from) {
-      from[kv.first] = vehicle_sensors.find(kv.second)->second;
+      for (const auto& comp_name : kv.second) {
+        from[kv.first].push_back(mock_veh_sensors.find(comp_name)->second);
+      }
     }
     auto f = std::dynamic_pointer_cast<FusionSensor>(
         std::shared_ptr<cloe::Component>(std::move(cf->make(cc.args, from))));

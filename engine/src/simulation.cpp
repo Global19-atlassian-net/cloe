@@ -490,12 +490,14 @@ StateId SimulationMachine::Connect::impl(SimulationContext& ctx) {
         return nullptr;
       }
 
-      std::map<std::string, std::shared_ptr<cloe::Component>> from;
+      std::map<std::string, std::vector<std::shared_ptr<cloe::Component>>> from;
       for (const auto& kv : c.from) {
-        if (!v.has(kv.second)) {
-          continue;
+        for (const auto& comp_name : kv.second) {
+          if (!v.has(comp_name)) {
+            continue;
+          }
+          from[kv.first].push_back(v.get<cloe::Component>(comp_name));
         }
-        from[kv.first] = v.get<cloe::Component>(kv.second);
       }
       if (!from.size()) {
         return nullptr;
@@ -593,15 +595,16 @@ StateId SimulationMachine::Connect::impl(SimulationContext& ctx) {
             auto& conf = kv_conf.second;
             assert(conf.from.size() > 0);
             for (const auto& kv_from : conf.from) {
-              auto from_name = kv_from.second;
-              if (x->has(from_name)) {
-                continue;
+              for (const auto& from_name : kv_from.second) {
+                if (x->has(from_name)) {
+                  continue;
+                }
+                throw cloe::ModelError{
+                    "cannot configure component '{}': cannot resolve dependency '{}'",
+                    comp_name,
+                    from_name,
+                };
               }
-              throw cloe::ModelError{
-                  "cannot configure component '{}': cannot resolve dependency '{}'",
-                  comp_name,
-                  from_name,
-              };
             }
           }
         }

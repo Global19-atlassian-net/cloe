@@ -54,22 +54,23 @@
  * The DEFINE_COMPONENT_FACTORY_MAKE macro can also be used to use the default
  * implementation.
  */
-#define DEFINE_COMPONENT_FACTORY(xFactoryType, xConfigType, xName, xDescription)        \
-  class xFactoryType : public ::cloe::ComponentFactory {                                \
-   public:                                                                              \
-    xFactoryType() : ComponentFactory(xName, xDescription) {}                           \
-    std::unique_ptr<::cloe::ComponentFactory> clone() const override {                  \
-      return std::make_unique<std::decay<decltype(*this)>::type>(*this);                \
-    }                                                                                   \
-    std::unique_ptr<::cloe::Component> make(                                            \
-        const ::cloe::Conf&,                                                            \
-        const std::map<std::string, std::shared_ptr<cloe::Component>>&) const override; \
-                                                                                        \
-   protected:                                                                           \
-    ::cloe::Schema schema_impl() override { return config_.schema(); }                  \
-                                                                                        \
-   private:                                                                             \
-    xConfigType config_;                                                                \
+#define DEFINE_COMPONENT_FACTORY(xFactoryType, xConfigType, xName, xDescription)     \
+  class xFactoryType : public ::cloe::ComponentFactory {                             \
+   public:                                                                           \
+    xFactoryType() : ComponentFactory(xName, xDescription) {}                        \
+    std::unique_ptr<::cloe::ComponentFactory> clone() const override {               \
+      return std::make_unique<std::decay<decltype(*this)>::type>(*this);             \
+    }                                                                                \
+    std::unique_ptr<::cloe::Component> make(                                         \
+        const ::cloe::Conf&,                                                         \
+        const std::map<std::string, std::vector<std::shared_ptr<cloe::Component>>>&) \
+        const override;                                                              \
+                                                                                     \
+   protected:                                                                        \
+    ::cloe::Schema schema_impl() override { return config_.schema(); }               \
+                                                                                     \
+   private:                                                                          \
+    xConfigType config_;                                                             \
   };
 
 /**
@@ -82,15 +83,16 @@
  */
 #define DEFINE_COMPONENT_FACTORY_MAKE(xFactoryType, xComponentType, xInputType)                   \
   std::unique_ptr<::cloe::Component> xFactoryType::make(                                          \
-      const ::cloe::Conf& c, const std::map<std::string, std::shared_ptr<cloe::Component>>& comp) \
-      const {                                                                                     \
+      const ::cloe::Conf& c,                                                                      \
+      const std::map<std::string, std::vector<std::shared_ptr<cloe::Component>>>& comp) const {   \
     decltype(config_) conf{config_};                                                              \
     assert(comp.size() == 1);                                                                     \
+    assert(comp.begin()->second.size() == 1);                                                     \
     if (!c->is_null()) {                                                                          \
       conf.from_conf(c);                                                                          \
     }                                                                                             \
     return std::make_unique<xComponentType>(                                                      \
-        this->name(), conf, std::dynamic_pointer_cast<xInputType>(comp.begin()->second));         \
+        this->name(), conf, std::dynamic_pointer_cast<xInputType>(comp.begin()->second.front())); \
   }
 
 namespace cloe {
@@ -241,7 +243,8 @@ class ComponentFactory : public ModelFactory {
    * - This method may throw Error.
    */
   virtual std::unique_ptr<Component> make(
-      const Conf& c, const std::map<std::string, std::shared_ptr<cloe::Component>>&) const = 0;
+      const Conf& c,
+      const std::map<std::string, std::vector<std::shared_ptr<cloe::Component>>>&) const = 0;
 };
 
 }  // namespace cloe

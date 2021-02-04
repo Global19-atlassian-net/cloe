@@ -584,7 +584,7 @@ struct ComponentConf : public Confable {
   const std::string binding;
   boost::optional<std::string> name;
   boost::optional<std::string> from_tmp;
-  std::map<std::string, std::string> from;
+  std::map<std::string, std::vector<std::string>> from;
   std::shared_ptr<ComponentFactory> factory;
   Conf args;
 
@@ -596,7 +596,7 @@ struct ComponentConf : public Confable {
   void from_conf(const Conf& c) override {
     Confable::from_conf(c);
     if (from_tmp) {
-      from["component"] = *from_tmp;
+      from["component"].push_back(*from_tmp);
       from_tmp = boost::none;
     }
   }
