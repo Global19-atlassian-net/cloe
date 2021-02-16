@@ -191,6 +191,34 @@ struct StructBase : public fable::Confable {
   }
 };
 
+}  // anonymous namespace
+
+TEST(fable_schema_struct, base_schema) {
+  StructBase base;
+  fable::assert_schema_eq(base, R"({
+    "additionalProperties": false,
+    "properties": {
+      "base": {
+        "description": "integer",
+        "maximum": 2147483647,
+        "minimum": -2147483648,
+        "type": "integer"
+      }
+    },
+    "type": "object"
+  })");
+}
+
+TEST(fable_schema_struct, base_from_eq_to) {
+  StructBase tmp;
+  fable::assert_from_eq_to(tmp, R"({
+    "base": 42
+  })");
+  ASSERT_EQ(tmp.base, 42);
+}
+
+namespace {
+
 struct StructSub1 : public StructBase {
   virtual ~StructSub1() = default;
 
@@ -199,87 +227,148 @@ struct StructSub1 : public StructBase {
   CONFABLE_SCHEMA(StructSub1) {
     using namespace fable::schema;  // NOLINT(build/namespaces)
     return Struct{
-        StructBase::schema(),
+        StructBase::schema_impl(),
         {
-            {"sub", make_schema(&sub, "boolean")},
+            {"sub", make_schema(&sub, "boolean").require()},
         },
     };
   }
 };
 
-struct StructSub2 : public StructBase {
-  std::string sub;
-};
-
-struct StructSub1Sub1 : public StructSub1 {
-  int subsub1 = 2;
-};
-
 }  // anonymous namespace
 
-TEST(fable_schema_struct, base_schema) {
-  StructFoo tmp;
-  fable::assert_schema_eq(tmp, R"({
+TEST(fable_schema_struct, base_sub1_schema) {
+  StructSub1 sub1;
+  fable::assert_schema_eq(sub1, R"({
     "additionalProperties": false,
     "properties": {
-      "a": {
+      "base": {
         "description": "integer",
         "maximum": 2147483647,
         "minimum": -2147483648,
         "type": "integer"
       },
-      "b": {
-        "description": "integer",
-        "maximum": 2147483647,
-        "minimum": -2147483648,
-        "type": "integer"
+      "sub": {
+        "description": "boolean",
+        "type": "boolean"
       }
     },
-    "required": [
-      "b"
-    ],
+    "required": ["sub"],
     "type": "object"
   })");
 }
 
-TEST(fable_schema_struct, base_validate) {
-  StructFoo tmp;
-
-  fable::assert_validate(tmp, R"({
-    "a": 1,
-    "b": 3
+TEST(fable_schema_struct, base_sub1_from_eq_to) {
+  StructSub1 tmp;
+  fable::assert_from_eq_to(tmp, R"({
+    "base": 42,
+    "sub": true
   })");
-  ASSERT_EQ(tmp.a.a, 0);
+  ASSERT_EQ(tmp.base, 42);
+  ASSERT_EQ(tmp.sub, true);
+}
 
-  fable::assert_validate(tmp, R"({
-    "b": 5
-  })");
-  ASSERT_EQ(tmp.b.b, 0);
+namespace {
 
-  fable::assert_invalidate(tmp, R"({
-    "a": 3
-  })");
+struct StructSub2 : public StructBase {
+  std::string sub;
 
-  fable::assert_invalidate(tmp, R"({
-    "b": "string"
+  CONFABLE_SCHEMA(StructSub2) {
+    using namespace fable::schema;  // NOLINT(build/namespaces)
+    return Struct{
+        StructBase::schema_impl(),
+        {
+            {"sub", make_schema(&sub, "string")},
+        },
+    };
+  }
+};
+
+}  // anonymous namespace
+
+TEST(fable_schema_struct, base_sub2_schema) {
+  StructSub2 sub2;
+  fable::assert_schema_eq(sub2, R"({
+    "additionalProperties": false,
+    "properties": {
+      "base": {
+        "description": "integer",
+        "maximum": 2147483647,
+        "minimum": -2147483648,
+        "type": "integer"
+      },
+      "sub": {
+        "description": "string",
+        "type": "string"
+      }
+    },
+    "type": "object"
   })");
 }
 
-TEST(fable_schema_struct, base_to_json) {
-  StructFoo tmp;
-  tmp.a.a = 1;
-  tmp.b.b = 42;
-  fable::assert_to_json(tmp, R"({
-    "a": 1,
-    "b": 42
+TEST(fable_schema_struct, base_sub2_from_eq_to) {
+  StructSub2 tmp;
+  fable::assert_from_eq_to(tmp, R"({
+    "base": 42,
+    "sub": "hello world"
+  })");
+  ASSERT_EQ(tmp.base, 42);
+  ASSERT_EQ(tmp.sub, "hello world");
+}
+
+namespace {
+
+struct StructSub1Sub1 : public StructSub1 {
+  int foo = 2;
+
+  CONFABLE_SCHEMA(StructSub1Sub1) {
+    using namespace fable::schema;  // NOLINT(build/namespaces)
+    return Struct{
+        StructSub1::schema_impl(),
+        {
+            {"foo", make_schema(&foo, "integer")},
+        },
+    };
+  }
+};
+
+}  // anonymous namespace
+
+TEST(fable_schema_struct, base_sub1sub1_schema) {
+  StructSub1Sub1 tmp;
+  fable::assert_schema_eq(tmp, R"({
+    "additionalProperties": false,
+    "properties": {
+      "base": {
+        "description": "integer",
+        "maximum": 2147483647,
+        "minimum": -2147483648,
+        "type": "integer"
+      },
+      "foo": {
+        "description": "integer",
+        "maximum": 2147483647,
+        "minimum": -2147483648,
+        "type": "integer"
+      },
+      "sub": {
+        "description": "boolean",
+        "type": "boolean"
+      }
+    },
+    "required": ["sub"],
+    "type": "object"
   })");
 }
 
-TEST(fable_schema_struct, base_from_conf) {
-  StructFoo tmp;
-  fable::assert_from_conf(tmp, R"({
-    "b": 42
+TEST(fable_schema_struct, base_sub1sub1_from_eq_to) {
+  StructSub1Sub1 tmp;
+  fable::assert_from_eq_to(tmp, R"({
+    "base": 42,
+    "foo": 8,
+    "sub": true
   })");
-  ASSERT_EQ(tmp.a.a, 0);
-  ASSERT_EQ(tmp.b.b, 42);
+  ASSERT_EQ(tmp.base, 42);
+  ASSERT_EQ(tmp.foo, 8);
+  ASSERT_EQ(tmp.sub, true);
 }

@@ -85,6 +85,30 @@ class Struct : public Base<Struct> {
   Struct(PropertyList<Box> props) : Struct("", props) {}  // NOLINT
 
   // Inheriting constructors
+  /**
+   * Instantiate a Struct with a base Schema, which should also be a Struct,
+   * then extend it with the property list.
+   *
+   * This is particularly useful when the Confable is inheriting from a base
+   * class:
+   *
+   *     struct Sub : public Base {
+   *       std::string member;
+   *       CONFABLE_SCHEMA(Sub) {
+   *         return Struct{
+   *           Base::schema_impl(),
+   *           {
+   *             {"member", make_schema(&member, "important addition")},
+   *           }
+   *         };
+   *       }
+   *     };
+   *
+   * Warning: When implementing schema_impl, for example with CONFABLE_SCHEMA,
+   * it is absolutely important that you _not_ call Base::schema(), as this
+   * will internally call this->schema_impl(), which will lead to an
+   * infinite recursion! Instead, call Base::schema_impl().
+   */
   template <typename S, typename = enable_if_schema_t<S>>
   Struct(std::string&& desc, const S& base, PropertyList<Box> props)
       : Struct(*base.template as<Struct>()) {
