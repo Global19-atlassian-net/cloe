@@ -188,6 +188,7 @@ class Struct : public Base<Struct> {
   void reset_ptr() override;
 
  public:  // Overrides
+  using Interface::to_json;
   Json usage() const override;
   Json json_schema() const override;
   void validate(const Conf& c) const override;
