@@ -38,6 +38,10 @@ inline void assert_eq(const Json& j, const Json& k) {
   ASSERT_EQ(std::string(j.dump(2)), std::string(k.dump(2)));
 }
 
+inline void assert_ne(const Json& j, const Json& k) {
+  ASSERT_NE(std::string(j.dump(2)), std::string(k.dump(2)));
+}
+
 inline void assert_schema_eq(const Confable& x, const Json& expect) {
   assert_eq(x.schema().json_schema(), expect);
 }
@@ -67,26 +71,44 @@ inline void assert_invalidate(const Confable& x, const char json_input[]) {
   assert_invalidate(x, Conf{Json::parse(json_input)});
 }
 
-inline void assert_to_json(const Confable& x, const Json& expect) {
+template <typename T>
+inline void assert_to_json(const T& x, const Json& expect) {
   assert_eq(x.to_json(), expect);
 }
 
-inline void assert_to_json(const Confable& x, const char json_expect[]) {
+template <typename T>
+inline void assert_to_json(const T& x, const char json_expect[]) {
   assert_to_json(x, Json::parse(json_expect));
 }
 
-inline void assert_from_conf(Confable& x, const Conf& input) { x.from_conf(input); }
+inline void assert_from_conf_throw(Confable& x, const Conf& input) {
+  Json before = x.to_json();
+  ASSERT_THROW(x.from_conf(input), SchemaError);
+  assert_eq(x.to_json(), before);
+}
 
-inline void assert_from_conf(Confable& x, const char json_input[]) {
+inline void assert_from_conf_throw(Confable& x, const char json_input[]) {
+  assert_from_conf_throw(x, Conf{Json::parse(json_input)});
+}
+
+template <typename T>
+inline void assert_from_conf(T& x, const Conf& input) {
+  x.from_conf(input);
+}
+
+template <typename T>
+inline void assert_from_conf(T& x, const char json_input[]) {
   assert_from_conf(x, Conf{Json::parse(json_input)});
 }
 
-inline void assert_from_eq_to(Confable& x, const Json& identity) {
+template <typename T>
+inline void assert_from_eq_to(T& x, const Json& identity) {
   assert_from_conf(x, Conf{identity});
   assert_to_json(x, identity);
 }
 
-inline void assert_from_eq_to(Confable& x, const char json_input[]) {
+template <typename T>
+inline void assert_from_eq_to(T& x, const char json_input[]) {
   assert_from_eq_to(x, Json::parse(json_input));
 }
 

@@ -62,7 +62,6 @@ TEST(fable_schema_optional, schema) {
 
 TEST(fable_schema_optional, validate) {
   MyOptionalStruct tmp;
-  auto s = tmp.schema();
 
   fable::assert_validate(tmp, R"({
     "str": null
@@ -74,9 +73,9 @@ TEST(fable_schema_optional, validate) {
   })");
   ASSERT_FALSE(tmp.str);
 
-  tmp.from_conf(fable::Conf{R"({
+  fable::assert_from_conf(tmp, R"({
     "str": "hello"
-  })"_json});
+  })");
   ASSERT_TRUE(tmp.str);
   ASSERT_EQ(*(tmp.str), "hello");
 }

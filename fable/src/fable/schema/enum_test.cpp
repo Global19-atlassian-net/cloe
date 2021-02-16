@@ -66,25 +66,12 @@ TEST(fable_schema_enum, vector_enum_ok) {
   std::vector<LogLevel> xs;
   Array<LogLevel, Enum<LogLevel>> s{&xs, ""};
 
-  fable::Json empty = R"([])"_json;
-  fable::Json input = R"([
+  fable::assert_to_json(s, "[]");
+  fable::assert_from_eq_to(s, R"([
     "info"
-  ])"_json;
-  fable::Json filled = R"([
-    "info"
-  ])"_json;
-
-  fable::Json j;
-  s.to_json(j);
-  ASSERT_EQ(j.dump(2), empty.dump(2));
-
-  s.from_conf(fable::Conf{input});
+  ])");
   ASSERT_EQ(xs.size(), 1);
   ASSERT_EQ(xs[0], LogLevel::info);
-  ASSERT_NO_THROW({
-    s.to_json(j);
-    ASSERT_EQ(j.dump(2), filled.dump(2));
-  });
 }
 
 TEST(fable_schema_enum, vector_struct_enum) {
@@ -92,24 +79,11 @@ TEST(fable_schema_enum, vector_struct_enum) {
   std::vector<LoggerStruct> xs;
   Array<LoggerStruct, FromConfable<LoggerStruct>> s{&xs, ""};
 
-  fable::Json empty = R"([])"_json;
-  fable::Json input = R"([{
-    "level": "info"
-  }])"_json;
-  fable::Json filled = R"([{
-    "level": "info"
-  }])"_json;
+  fable::assert_to_json(s, "[]");
+  fable::assert_from_eq_to(s, R"([
+    {"level": "info"}
+  ])");
 
-  fable::Json j;
-  s.to_json(j);
-  ASSERT_EQ(j.dump(2), empty.dump(2));
-
-  s.from_conf(fable::Conf{input});
   ASSERT_EQ(xs.size(), 1);
   ASSERT_EQ(*(xs[0].level), LogLevel::info);
-  ASSERT_EQ(fable::Json(xs).dump(2), filled.dump(2));
-  ASSERT_NO_THROW({
-    s.to_json(j);
-    ASSERT_EQ(j.dump(2), filled.dump(2));
-  });
 }
