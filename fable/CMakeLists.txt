@@ -52,6 +52,7 @@ if(BuildTests)
         src/fable/schema/const_test.cpp
         src/fable/schema/enum_test.cpp
         src/fable/schema/factory_test.cpp
+        src/fable/schema/factory_advanced_test.cpp
         src/fable/schema/number_test.cpp
         src/fable/schema/optional_test.cpp
         src/fable/schema/struct_test.cpp

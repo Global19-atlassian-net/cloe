@@ -194,8 +194,8 @@ class FactoryBase : public Base<CRTP> {
   /**
    * Add a factory with the given key, schema, and function.
    */
-  void add_factory(const std::string& key, const Box& s, MakeFunc f) {
-    available_.insert(std::make_pair(key, TypeFactory{s, f}));
+  void add_factory(const std::string& key, Box&& s, MakeFunc f) {
+    available_.insert(std::make_pair(key, TypeFactory{std::move(s), f}));
     reset_schema();
   }
 
@@ -217,7 +217,7 @@ class FactoryBase : public Base<CRTP> {
                               std::is_convertible<std::unique_ptr<F>, T>::value),
                              int> = 0>
   void add_default_factory(const std::string& key) {
-    add_factory(key, make_prototype<F>(), [](const Conf& c) -> T {
+    add_factory(key, make_prototype<F>().get_confable_schema(), [](const Conf& c) -> T {
       auto ptr = std::make_unique<F>();
       ptr->from_conf(c);
       return ptr;
@@ -290,7 +290,12 @@ class FactoryBase : public Base<CRTP> {
   }
 
  protected:
-  void reset_schema() { schema_.reset(new Variant(factory_schemas())); }
+  void reset_schema() {
+    if (available_.size() == 0) {
+      return;
+    }
+    schema_.reset(new Variant(factory_schemas()));
+  }
 
   std::vector<Box> factory_schemas() const {
     std::vector<Box> out;
@@ -330,7 +335,6 @@ class FactoryBase : public Base<CRTP> {
  protected:
   std::shared_ptr<Variant> schema_;
   TransformFunc transform_func_;
-  std::vector<Box> available_schemas_;
   FactoryMap available_;
   std::string factory_key_{"factory"};
   std::string args_key_{"args"};
