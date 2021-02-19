@@ -35,10 +35,6 @@
 #include <fable/schema/interface.hpp>  // for Base<>
 
 namespace fable {
-
-// Forward declaration from fable/schema.hpp:
-class Schema;
-
 namespace schema {
 
 /**
@@ -109,15 +105,13 @@ class Struct : public Base<Struct> {
    * will internally call this->schema_impl(), which will lead to an
    * infinite recursion! Instead, call Base::schema_impl().
    */
-  template <typename S, typename = enable_if_schema_t<S>>
-  Struct(std::string&& desc, const S& base, PropertyList<Box> props)
+  Struct(std::string&& desc, const Box& base, PropertyList<Box> props)
       : Struct(*base.template as<Struct>()) {
     desc_ = std::move(desc);
     set_properties(props);
   }
 
-  template <typename S, typename = enable_if_schema_t<S>>
-  Struct(const S& base, PropertyList<Box> props) : Struct("", base, props) {}
+  Struct(const Box& base, PropertyList<Box> props) : Struct("", base, props) {}
 
  public:  // Special
   /**
@@ -138,7 +132,6 @@ class Struct : public Base<Struct> {
    * - This overwrites any already existing property of the same key.
    */
   void set_properties(PropertyList<Box> props);
-  void set_properties(PropertyList<Schema> props);
 
   /**
    * Add the properties from s to this schema.
@@ -147,10 +140,7 @@ class Struct : public Base<Struct> {
    */
   void set_properties_from(const Struct& s) { set_properties(s.properties_); }
 
-  template <typename S, typename = enable_if_schema_t<S>>
-  void set_properties_from(const S& s) {
-    set_properties_from(*s.template as<Struct>());
-  }
+  void set_properties_from(const Box& s) { set_properties_from(*s.template as<Struct>()); }
 
   template <typename T, typename = enable_if_confable_t<T>>
   void set_properties_from(const T* x) {

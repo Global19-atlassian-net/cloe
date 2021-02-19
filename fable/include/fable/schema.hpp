@@ -248,11 +248,6 @@ class Schema : public schema::Interface {
 
   friend void to_json(Json& j, const Schema& s) { s.impl_->to_json(j); }
 
-  template <typename T>
-  std::shared_ptr<const T> as() const {
-    return std::dynamic_pointer_cast<T>(impl_);
-  }
-
  public:  // Overrides
   using Interface::to_json;
   operator schema::Box() const { return schema::Box{impl_}; }

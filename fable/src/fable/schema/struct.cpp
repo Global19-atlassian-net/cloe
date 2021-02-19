@@ -20,7 +20,6 @@
  * \see  fable/schema/struct.hpp
  */
 
-#include <fable/schema.hpp>
 #include <fable/schema/struct.hpp>
 
 #include <algorithm>  // for find
@@ -45,12 +44,6 @@ void Struct::set_property(const std::string& key, Box&& s) {
 }
 
 void Struct::set_properties(PropertyList<Box> props) {
-  for (auto& p : props) {
-    set_property(p.first, p.second.clone());
-  }
-}
-
-void Struct::set_properties(PropertyList<Schema> props) {
   for (auto& p : props) {
     set_property(p.first, p.second.clone());
   }
