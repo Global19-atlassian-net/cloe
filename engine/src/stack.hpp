@@ -763,7 +763,6 @@ class VehicleSchema : public fable::schema::Base<VehicleSchema> {
 
  private:  // State
   ComponentSchema components_;
-  Type* ptr_;
 };
 
 // --------------------------------------------------------------------------------------------- //
