@@ -68,10 +68,8 @@ class NormalDistribution : public Distribution<T> {
 
   void to_json(Json& j) const override {
     Distribution<T>::to_json(j);
-    j["args"] = Json{
-        {"mean", mean},
-        {"std_deviation", std_deviation},
-    };
+    j["mean"] = mean;
+    j["std_deviation"] = std_deviation;
   }
 
   void from_conf(const Conf& c) override {
@@ -129,6 +127,7 @@ class DistributionFactory : public fable::schema::Factory<DistributionPtr> {
   DistributionFactory(DistributionPtr* ptr, std::string&& desc)
       : fable::schema::Factory<DistributionPtr>(ptr, std::move(desc)) {
     this->set_factory_key("binding");
+    this->set_args_key("");
     this->add_default_factory<NormalDistribution<double>>("normal");
   };
   virtual ~DistributionFactory() = default;

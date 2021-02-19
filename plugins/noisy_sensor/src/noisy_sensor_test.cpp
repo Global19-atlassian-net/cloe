@@ -35,10 +35,8 @@ TEST(noisy_sensor, deserialize_distribution) {
   fable::assert_validate(n, R"({
     "distribution": {
         "binding": "normal",
-        "args": {
-            "mean": 1.0,
-            "std_deviation": 0.1
-        }
+        "mean": 1.0,
+        "std_deviation": 0.1
     }
   })");
 }
